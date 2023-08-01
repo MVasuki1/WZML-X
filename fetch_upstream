@@ -1,0 +1,3 @@
+git checkout -b weebzone-master master
+git pull https://github.com/weebzone/WZML-X.git
+git push --set-upstream origin weebzone-master
