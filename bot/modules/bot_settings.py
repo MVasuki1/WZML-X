@@ -14,8 +14,8 @@ from time import time
 from io import BytesIO
 from aioshutil import rmtree as aiormtree
 
-from bot import config_dict, user_data, DATABASE_URL, MAX_SPLIT_SIZE, DRIVES_IDS, DRIVES_NAMES, INDEX_URLS, aria2, GLOBAL_EXTENSION_FILTER, status_reply_dict_lock, Interval, aria2_options, aria2c_global, IS_PREMIUM_USER, download_dict, qbit_options, get_client, LOGGER, bot, extra_buttons, shorteneres_list
-from bot.helper.telegram_helper.message_utils import sendMessage, sendFile, editMessage, update_all_messages
+from bot import config_dict, user_data, DATABASE_URL, MAX_SPLIT_SIZE, list_drives_dict, categories_dict, aria2, GLOBAL_EXTENSION_FILTER, status_reply_dict_lock, Interval, aria2_options, aria2c_global, IS_PREMIUM_USER, download_dict, qbit_options, get_client, LOGGER, bot, extra_buttons, shorteners_list
+from bot.helper.telegram_helper.message_utils import sendMessage, sendFile, editMessage, deleteMessage, update_all_messages
 from bot.helper.telegram_helper.filters import CustomFilters
 from bot.helper.telegram_helper.bot_commands import BotCommands
 from bot.helper.telegram_helper.button_build import ButtonMaker
@@ -26,6 +26,7 @@ from bot.helper.ext_utils.help_messages import default_desp
 from bot.helper.mirror_utils.rclone_utils.serve import rclone_serve_booter
 from bot.modules.torrent_search import initiate_search_tools
 from bot.modules.rss import addJob
+from bot.helper.themes import AVL_THEMES
 
 START = 0
 STATE = 'view'
@@ -34,7 +35,7 @@ default_values = {'AUTO_DELETE_MESSAGE_DURATION': 30,
                   'DEFAULT_UPLOAD': 'gd',
                   'DOWNLOAD_DIR': '/usr/src/app/downloads/',
                   'LEECH_SPLIT_SIZE': MAX_SPLIT_SIZE,
-                  'RSS_DELAY': 900,
+                  'RSS_DELAY': 600,
                   'STATUS_UPDATE_INTERVAL': 10,
                   'SEARCH_LIMIT': 0,
                   'UPSTREAM_BRANCH': 'master',
@@ -46,8 +47,9 @@ default_values = {'AUTO_DELETE_MESSAGE_DURATION': 30,
                   'TITLE_NAME': 'WZ Mirror/Leech X',
                   'GD_INFO': 'Uploaded by WZML-X',
                   }
-bool_vars = ['AS_DOCUMENT', 'BOT_PM', 'STOP_DUPLICATE', 'SET_COMMANDS', 'SAVE_MSG', 'SHOW_MEDIAINFO', 'SOURCE_LINK',
-             'IS_TEAM_DRIVE', 'USE_SERVICE_ACCOUNTS', 'WEB_PINCODE', 'EQUAL_SPLITS', 'DISABLE_DRIVE_LINK', 'DELETE_LINKS']
+bool_vars = ['AS_DOCUMENT', 'BOT_PM', 'STOP_DUPLICATE', 'SET_COMMANDS', 'SAVE_MSG', 'SHOW_MEDIAINFO', 'SOURCE_LINK', 'SAFE_MODE', 'SHOW_EXTRA_CMDS',
+             'IS_TEAM_DRIVE', 'USE_SERVICE_ACCOUNTS', 'WEB_PINCODE', 'EQUAL_SPLITS', 'DISABLE_DRIVE_LINK', 'DELETE_LINKS', 'CLEAN_LOG_MSG', 'USER_TD_MODE', 
+             'INCOMPLETE_TASK_NOTIFIER']
 
 
 async def load_config():
@@ -66,6 +68,9 @@ async def load_config():
     if len(TELEGRAM_HASH) == 0:
         TELEGRAM_HASH = config_dict['TELEGRAM_HASH']
 
+    BOT_MAX_TASKS = environ.get('BOT_MAX_TASKS', '')
+    BOT_MAX_TASKS = int(BOT_MAX_TASKS) if BOT_MAX_TASKS.isdigit() else ''
+    
     OWNER_ID = environ.get('OWNER_ID', '')
     OWNER_ID = config_dict['OWNER_ID'] if len(OWNER_ID) == 0 else int(OWNER_ID)
 
@@ -106,6 +111,12 @@ async def load_config():
         aid = SUDO_USERS.split()
         for id_ in aid:
             user_data[int(id_.strip())] = {'is_sudo': True}
+            
+    BLACKLIST_USERS = environ.get('BLACKLIST_USERS', '')
+    if len(BLACKLIST_USERS) != 0:
+        aid = BLACKLIST_USERS.split()
+        for id_ in aid:
+            user_data[int(id_.strip())] = {'is_blacklist': True}
 
     EXTENSION_FILTER = environ.get('EXTENSION_FILTER', '')
     if len(EXTENSION_FILTER) > 0:
@@ -126,6 +137,14 @@ async def load_config():
     UPTOBOX_TOKEN = environ.get('UPTOBOX_TOKEN', '')
     if len(UPTOBOX_TOKEN) == 0:
         UPTOBOX_TOKEN = ''
+        
+    GDTOT_CRYPT = environ.get('GDTOT_CRYPT', '')
+    if len(GDTOT_CRYPT) == 0:
+        GDTOT_CRYPT = ''
+        
+    DEBRID_API_KEY = environ.get('DEBRID_API_KEY', '')
+    if len(DEBRID_API_KEY) == 0:
+        DEBRID_API_KEY = ''
 
     INDEX_URL = environ.get('INDEX_URL', '').rstrip("/")
     if len(INDEX_URL) == 0:
@@ -205,9 +224,6 @@ async def load_config():
     SEARCH_LIMIT = environ.get('SEARCH_LIMIT', '')
     SEARCH_LIMIT = 0 if len(SEARCH_LIMIT) == 0 else int(SEARCH_LIMIT)
 
-    LEECH_LOG_ID = environ.get('LEECH_LOG_ID', '')
-    LEECH_LOG_ID = '' if len(LEECH_LOG_ID) == 0 else int(LEECH_LOG_ID)
-
     STATUS_LIMIT = environ.get('STATUS_LIMIT', '')
     STATUS_LIMIT = 10 if len(STATUS_LIMIT) == 0 else int(STATUS_LIMIT)
 
@@ -274,6 +290,12 @@ async def load_config():
 
     AS_DOCUMENT = environ.get('AS_DOCUMENT', '')
     AS_DOCUMENT = AS_DOCUMENT.lower() == 'true'
+    
+    USER_TD_MODE = environ.get('USER_TD_MODE', '')
+    USER_TD_MODE = USER_TD_MODE.lower() == 'true'
+
+    USER_TD_SA = environ.get('USER_TD_SA', '')
+    USER_TD_SA = USER_TD_SA.lower() if len(USER_TD_SA) != 0 else ''
 
     SHOW_MEDIAINFO = environ.get('SHOW_MEDIAINFO', '')
     SHOW_MEDIAINFO = SHOW_MEDIAINFO.lower() == 'true'
@@ -352,13 +374,27 @@ async def load_config():
     FSUB_IDS = environ.get('FSUB_IDS', '')
     if len(FSUB_IDS) == 0:
         FSUB_IDS = ''
+    
+    LINKS_LOG_ID = environ.get('LINKS_LOG_ID', '')
+    LINKS_LOG_ID = '' if len(LINKS_LOG_ID) == 0 else int(LINKS_LOG_ID)
 
     MIRROR_LOG_ID = environ.get('MIRROR_LOG_ID', '')
     if len(MIRROR_LOG_ID) == 0:
         MIRROR_LOG_ID = ''
+        
+    LEECH_LOG_ID = environ.get('LEECH_LOG_ID', '')
+    if len(LEECH_LOG_ID) == 0:
+        LEECH_LOG_ID = ''
+        
+    EXCEP_CHATS = environ.get('EXCEP_CHATS', '')
+    if len(EXCEP_CHATS) == 0:
+        EXCEP_CHATS = ''
 
     USER_MAX_TASKS = environ.get('USER_MAX_TASKS', '')
-    USER_MAX_TASKS = '' if len(USER_MAX_TASKS) == 0 else int(USER_MAX_TASKS)
+    USER_MAX_TASKS = int(USER_MAX_TASKS) if USER_MAX_TASKS.isdigit() else ''
+
+    USER_TIME_INTERVAL = environ.get('USER_TIME_INTERVAL', '')
+    USER_TIME_INTERVAL = int(USER_TIME_INTERVAL) if USER_TIME_INTERVAL.isdigit() else 0
 
     PLAYLIST_LIMIT = environ.get('PLAYLIST_LIMIT', '')
     PLAYLIST_LIMIT = '' if len(PLAYLIST_LIMIT) == 0 else int(PLAYLIST_LIMIT)
@@ -367,16 +403,13 @@ async def load_config():
     BOT_PM = BOT_PM.lower() == 'true'
 
     DAILY_TASK_LIMIT = environ.get('DAILY_TASK_LIMIT', '')
-    DAILY_TASK_LIMIT = '' if len(
-        DAILY_TASK_LIMIT) == 0 else int(DAILY_TASK_LIMIT)
+    DAILY_TASK_LIMIT = '' if len(DAILY_TASK_LIMIT) == 0 else int(DAILY_TASK_LIMIT)
 
     DAILY_MIRROR_LIMIT = environ.get('DAILY_MIRROR_LIMIT', '')
-    DAILY_MIRROR_LIMIT = '' if len(
-        DAILY_MIRROR_LIMIT) == 0 else float(DAILY_MIRROR_LIMIT)
+    DAILY_MIRROR_LIMIT = '' if len(DAILY_MIRROR_LIMIT) == 0 else float(DAILY_MIRROR_LIMIT)
 
     DAILY_LEECH_LIMIT = environ.get('DAILY_LEECH_LIMIT', '')
-    DAILY_LEECH_LIMIT = '' if len(
-        DAILY_LEECH_LIMIT) == 0 else float(DAILY_LEECH_LIMIT)
+    DAILY_LEECH_LIMIT = '' if len(DAILY_LEECH_LIMIT) == 0 else float(DAILY_LEECH_LIMIT)
 
     DISABLE_DRIVE_LINK = environ.get('DISABLE_DRIVE_LINK', '')
     DISABLE_DRIVE_LINK = DISABLE_DRIVE_LINK.lower() == 'true'
@@ -386,15 +419,13 @@ async def load_config():
         BOT_THEME = 'minimal'
 
     IMG_SEARCH = environ.get('IMG_SEARCH', '')
-    IMG_SEARCH = (IMG_SEARCH.replace("'", '').replace('"', '').replace(
-        '[', '').replace(']', '').replace(",", "")).split()
+    IMG_SEARCH = (IMG_SEARCH.replace("'", '').replace('"', '').replace('[', '').replace(']', '').replace(",", "")).split()
 
     IMG_PAGE = environ.get('IMG_PAGE', '')
     IMG_PAGE = 1 if not IMG_PAGE else int(IMG_PAGE)
 
     IMAGES = environ.get('IMAGES', '')
-    IMAGES = (IMAGES.replace("'", '').replace('"', '').replace(
-        '[', '').replace(']', '').replace(",", "")).split()
+    IMAGES = (IMAGES.replace("'", '').replace('"', '').replace('[', '').replace(']', '').replace(",", "")).split()
 
     AUTHOR_NAME = environ.get('AUTHOR_NAME', '')
     if len(AUTHOR_NAME) == 0:
@@ -407,6 +438,10 @@ async def load_config():
     TITLE_NAME = environ.get('TITLE_NAME', '')
     if len(TITLE_NAME) == 0:
         TITLE_NAME = 'WeebZone-X'
+        
+    COVER_IMAGE = environ.get('COVER_IMAGE', '')
+    if len(COVER_IMAGE) == 0:
+        COVER_IMAGE = 'https://graph.org/file/60f9f8bcb97d27f76f5c0.jpg'
 
     GD_INFO = environ.get('GD_INFO', '')
     if len(GD_INFO) == 0:
@@ -417,6 +452,15 @@ async def load_config():
 
     SET_COMMANDS = environ.get('SET_COMMANDS', '')
     SET_COMMANDS = SET_COMMANDS.lower() == 'true'
+    
+    SAFE_MODE = environ.get('SAFE_MODE', '')
+    SAFE_MODE = SAFE_MODE.lower() == 'true'
+    
+    CLEAN_LOG_MSG = environ.get('CLEAN_LOG_MSG', '')
+    CLEAN_LOG_MSG = CLEAN_LOG_MSG.lower() == 'true'
+    
+    SHOW_EXTRA_CMDS = environ.get('SHOW_EXTRA_CMDS', '')
+    SHOW_EXTRA_CMDS = SHOW_EXTRA_CMDS.lower() == 'true'
     
     TOKEN_TIMEOUT = environ.get('TOKEN_TIMEOUT', '')
     TOKEN_TIMEOUT = int(TOKEN_TIMEOUT) if TOKEN_TIMEOUT.isdigit() else ''
@@ -477,26 +521,29 @@ async def load_config():
     if len(TIMEZONE) == 0:
         TIMEZONE = 'Asia/Kolkata'
         
-    DRIVES_IDS.clear()
-    DRIVES_NAMES.clear()
-    INDEX_URLS.clear()
-
+    list_drives_dict.clear()
     if GDRIVE_ID:
-        DRIVES_NAMES.append("Main")
-        DRIVES_IDS.append(GDRIVE_ID)
-        INDEX_URLS.append(INDEX_URL)
+        list_drives_dict['Main'] = {"drive_id": GDRIVE_ID, "index_link": INDEX_URL}
+        categories_dict['Root'] = {"drive_id": GDRIVE_ID, "index_link": INDEX_URL}
 
     if await aiopath.exists('list_drives.txt'):
         async with aiopen('list_drives.txt', 'r+') as f:
             lines = await f.readlines()
             for line in lines:
-                temp = line.strip().split()
-                DRIVES_IDS.append(temp[1])
-                DRIVES_NAMES.append(temp[0].replace("_", " "))
-                if len(temp) > 2:
-                    INDEX_URLS.append(temp[2])
-                else:
-                    INDEX_URLS.append('')
+                sep = 2 if line.strip().split()[-1].startswith('http') else 1
+                temp = line.strip().rsplit(maxsplit=sep)
+                name = "Main Custom" if temp[0].casefold() == "Main" else temp[0]
+                list_drives_dict[name] = {'drive_id': temp[1], 'index_link': (temp[2] if sep == 2 else '')}
+
+    categories_dict.clear()
+    if await aiopath.exists('categories.txt'):
+        async with aiopen('categories.txt', 'r+') as f:
+            lines = await f.readlines()
+            for line in lines:
+                sep = 2 if line.strip().split()[-1].startswith('http') else 1
+                temp = line.strip().rsplit(maxsplit=sep)
+                name = "Root Custom" if temp[0].casefold() == "Root" else temp[0]
+                categories_dict[name] = {'drive_id': temp[1], 'index_link': (temp[2] if sep == 2 else '')}
 
     extra_buttons.clear()
     if await aiopath.exists('buttons.txt'):
@@ -509,14 +556,14 @@ async def load_config():
                 if len(temp) == 2:
                     extra_buttons[temp[0].replace("_", " ")] = temp[1]
 
-    shorteneres_list.clear()
+    shorteners_list.clear()
     if await aiopath.exists('shorteners.txt'):
         async with aiopen('shorteners.txt', 'r+') as f:
             lines = await f.readlines()
             for line in lines:
                 temp = line.strip().split()
                 if len(temp) == 2:
-                    shorteneres_list.append({'domain': temp[0],'api_key': temp[1]})
+                    shorteners_list.append({'domain': temp[0],'api_key': temp[1]})
 
     config_dict.update({'ANIME_TEMPLATE': DEF_ANI_TEMP,
                         'AS_DOCUMENT': AS_DOCUMENT,
@@ -524,13 +571,17 @@ async def load_config():
                         'AUTO_DELETE_MESSAGE_DURATION': AUTO_DELETE_MESSAGE_DURATION,
                         'BASE_URL': BASE_URL,
                         'BASE_URL_PORT': BASE_URL_PORT,
+                        'BLACKLIST_USERS': BLACKLIST_USERS,
                         'BOT_TOKEN': BOT_TOKEN,
+                        'BOT_MAX_TASKS': BOT_MAX_TASKS,
                         'CAP_FONT': CAP_FONT,
                         'CMD_SUFFIX': CMD_SUFFIX,
                         'DATABASE_URL': DATABASE_URL,
+                        'DEBRID_API_KEY': DEBRID_API_KEY,
                         'DELETE_LINKS': DELETE_LINKS,
                         'DEFAULT_UPLOAD': DEFAULT_UPLOAD,
                         'DOWNLOAD_DIR': DOWNLOAD_DIR,
+                        'EXCEP_CHATS': EXCEP_CHATS,
                         'STORAGE_THRESHOLD': STORAGE_THRESHOLD,
                         'TORRENT_LIMIT': TORRENT_LIMIT,
                         'DIRECT_LIMIT': DIRECT_LIMIT,
@@ -541,12 +592,14 @@ async def load_config():
                         'LEECH_LIMIT': LEECH_LIMIT,
                         'FSUB_IDS': FSUB_IDS,
                         'USER_MAX_TASKS': USER_MAX_TASKS,
+                        'USER_TIME_INTERVAL': USER_TIME_INTERVAL,
                         'PLAYLIST_LIMIT': PLAYLIST_LIMIT,
                         'DAILY_TASK_LIMIT': DAILY_TASK_LIMIT,
                         'DAILY_MIRROR_LIMIT': DAILY_MIRROR_LIMIT,
                         'DAILY_LEECH_LIMIT': DAILY_LEECH_LIMIT,
                         'MIRROR_LOG_ID': MIRROR_LOG_ID,
                         'LEECH_LOG_ID': LEECH_LOG_ID,
+                        'LINKS_LOG_ID': LINKS_LOG_ID,
                         'BOT_PM': BOT_PM,
                         'DISABLE_DRIVE_LINK': DISABLE_DRIVE_LINK,
                         'BOT_THEME': BOT_THEME,
@@ -556,8 +609,10 @@ async def load_config():
                         'IMDB_TEMPLATE': DEF_IMDB_TEMP,
                         'AUTHOR_NAME': AUTHOR_NAME,
                         'AUTHOR_URL': AUTHOR_URL,
+                        'COVER_IMAGE': COVER_IMAGE,
                         'TITLE_NAME': TITLE_NAME,
                         'GD_INFO': GD_INFO,
+                        'GDTOT_CRYPT': GDTOT_CRYPT,
                         'EQUAL_SPLITS': EQUAL_SPLITS,
                         'EXTENSION_FILTER': EXTENSION_FILTER,
                         'GDRIVE_ID': GDRIVE_ID,
@@ -591,11 +646,14 @@ async def load_config():
                         'RSS_CHAT_ID': RSS_CHAT_ID,
                         'RSS_DELAY': RSS_DELAY,
                         'SAVE_MSG': SAVE_MSG,
+                        'SAFE_MODE': SAFE_MODE,
                         'SEARCH_API_LINK': SEARCH_API_LINK,
                         'SEARCH_LIMIT': SEARCH_LIMIT,
                         'SEARCH_PLUGINS': SEARCH_PLUGINS,
                         'SET_COMMANDS': SET_COMMANDS,
                         'SHOW_MEDIAINFO': SHOW_MEDIAINFO,
+                        'CLEAN_LOG_MSG': CLEAN_LOG_MSG,
+                        'SHOW_EXTRA_CMDS': SHOW_EXTRA_CMDS,
                         'SOURCE_LINK': SOURCE_LINK,
                         'STATUS_LIMIT': STATUS_LIMIT,
                         'STATUS_UPDATE_INTERVAL': STATUS_UPDATE_INTERVAL,
@@ -609,6 +667,8 @@ async def load_config():
                         'UPSTREAM_BRANCH': UPSTREAM_BRANCH,
                         'UPTOBOX_TOKEN': UPTOBOX_TOKEN,
                         'USER_SESSION_STRING': USER_SESSION_STRING,
+                        'USER_TD_MODE':USER_TD_MODE,
+                        'USER_TD_SA': USER_TD_SA,
                         'USE_SERVICE_ACCOUNTS': USE_SERVICE_ACCOUNTS,
                         'WEB_PINCODE': WEB_PINCODE,
                         'YT_DLP_OPTIONS': YT_DLP_OPTIONS})
@@ -636,14 +696,18 @@ async def get_buttons(key=None, edit_type=None, edit_mode=None, mess=None):
         buttons.ibutton('Close', "botset close")
         for x in range(0, len(config_dict)-1, 10):
             buttons.ibutton(f'{int(x/10)+1}', f"botset start var {x}", position='footer')
-        msg = f'<b>Config Variables<b> | Page: {int(START/10)+1}'
+        msg = f'<b>Config Variables</b> | <b>Page: {int(START/10)+1}</b>'
     elif key == 'private':
         buttons.ibutton('Back', "botset back")
         buttons.ibutton('Close', "botset close")
-        msg = '''Send private file: config.env, token.pickle, accounts.zip, list_drives.txt, cookies.txt, terabox.txt, .netrc or any other file!
-To delete private file send only the file name as text message.
-Note: Changing .netrc will not take effect for aria2c until restart.
-Timeout: 60 sec'''
+        msg = '''<u>Send any of these private files:</u>
+        
+<code>config.env, token.pickle, accounts.zip, list_drives.txt, categories.txt, shorteners.txt, cookies.txt, terabox.txt, .netrc or any other file!</code>
+
+<i>To delete private file send only the file name as text message with or without extension.</i>
+<b>NOTE:</b> Changing .netrc will not take effect for aria2c until restart.
+
+<b>Timeout:</b> 60 sec'''
     elif key == 'aria':
         for k in list(aria2_options.keys())[START:10+START]:
             buttons.ibutton(k, f"botset editaria {k}")
@@ -729,7 +793,7 @@ async def edit_variable(_, message, pre_message, key):
     elif key == 'DOWNLOAD_DIR':
         if not value.endswith('/'):
             value += '/'
-    elif key in ['LEECH_LOG_ID', 'RSS_CHAT_ID']:
+    elif key in ['LINKS_LOG_ID', 'RSS_CHAT_ID']:
         value = int(value)
     elif key == 'STATUS_UPDATE_INTERVAL':
         value = int(value)
@@ -751,6 +815,9 @@ async def edit_variable(_, message, pre_message, key):
         aria2_options['bt-stop-timeout'] = f'{value}'
     elif key == 'LEECH_SPLIT_SIZE':
         value = min(int(value), MAX_SPLIT_SIZE)
+    elif key == 'BOT_THEME':
+        if not value.strip() in AVL_THEMES.keys():
+            value = 'minimal'
     elif key == 'CAP_FONT':
         value = value.strip().lower()
         if value not in ['b', 'i', 'u', 's', 'spoiler', 'code']:
@@ -769,20 +836,16 @@ async def edit_variable(_, message, pre_message, key):
                 x = x.lstrip('.')
             GLOBAL_EXTENSION_FILTER.append(x.strip().lower())
     elif key == 'GDRIVE_ID':
-        if DRIVES_NAMES and DRIVES_NAMES[0] == 'Main':
-            DRIVES_IDS[0] = value
-        else:
-            DRIVES_IDS.insert(0, value)
+        list_drives_dict['Main'] = {"drive_id": value, "index_link": config_dict['INDEX_URL']}
+        categories_dict['Root'] = {"drive_id": value, "index_link": config_dict['INDEX_URL']}
     elif key == 'INDEX_URL':
-        if DRIVES_NAMES and DRIVES_NAMES[0] == 'Main':
-            INDEX_URLS[0] = value
-        else:
-            INDEX_URLS.insert(0, value)
+        list_drives_dict['Main'] = {"drive_id": config_dict['GDRIVE_ID'], "index_link": value}
+        categories_dict['Root'] = {"drive_id": config_dict['GDRIVE_ID'], "index_link": value}
     elif value.isdigit():
         value = int(value)
     config_dict[key] = value
     await update_buttons(pre_message, key, 'editvar', False)
-    await message.delete()
+    await deleteMessage(message)
     if DATABASE_URL:
         await DbManger().update_config({key: value})
     if key in ['SEARCH_PLUGINS', 'SEARCH_API_LINK']:
@@ -814,7 +877,7 @@ async def edit_aria(_, message, pre_message, key):
                     LOGGER.error(e)
     aria2_options[key] = value
     await update_buttons(pre_message, 'aria')
-    await message.delete()
+    await deleteMessage(message)
     if DATABASE_URL:
         await DbManger().update_aria2(key, value)
 
@@ -833,7 +896,7 @@ async def edit_qbit(_, message, pre_message, key):
     await sync_to_async(get_client().app_set_preferences, {key: value})
     qbit_options[key] = value
     await update_buttons(pre_message, 'qbit')
-    await message.delete()
+    await deleteMessage(message)
     if DATABASE_URL:
         await DbManger().update_qbittorrent(key, value)
 
@@ -841,6 +904,7 @@ async def edit_qbit(_, message, pre_message, key):
 async def update_private_file(_, message, pre_message):
     handler_dict[message.chat.id] = False
     if not message.media and (file_name := message.text):
+        path = file_name
         fn = file_name.rsplit('.zip', 1)[0]
         if await aiopath.isfile(fn) and file_name != 'config.env':
             await remove(fn)
@@ -856,12 +920,29 @@ async def update_private_file(_, message, pre_message):
             await (await create_subprocess_exec("touch", ".netrc")).wait()
             await (await create_subprocess_exec("chmod", "600", ".netrc")).wait()
             await (await create_subprocess_exec("cp", ".netrc", "/root/.netrc")).wait()
+        elif file_name.startswith('wzml_'):
+            path = f"bot/helper/themes/{file_name.rsplit('.py', 1)[0]}.py"
+            if await aiopath.isfile(path):
+                await remove(path)
         elif file_name in ['buttons.txt', 'buttons']:
             extra_buttons.clear()
-        await message.delete()
+        elif file_name in ['categories.txt', 'categories']:
+            categories_dict.clear()
+            if GDRIVE_ID := config_dict['GDRIVE_ID']:
+                categories_dict['Root'] = {"drive_id": GDRIVE_ID, "index_link": config_dict['INDEX_URL']}
+        elif file_name in ['list_drives.txt', 'list_drives']:
+            list_drives_dict.clear()
+            if GDRIVE_ID := config_dict['GDRIVE_ID']:
+                list_drives_dict['Main'] = {"drive_id": GDRIVE_ID, "index_link": config_dict['INDEX_URL']}
+        elif file_name in ['shorteners.txt', 'shorteners']:
+            shorteners_list.clear()
+        await deleteMessage(message)
     elif doc := message.document:
         file_name = doc.file_name
-        await message.download(file_name=f'{getcwd()}/{file_name}')
+        path = file_name
+        if file_name.startswith('wzml_') and file_name.endswith('.py'):
+            path = f'bot/helper/themes/{file_name}'
+        await message.download(file_name=f'{getcwd()}/{path}')
         if file_name == 'accounts.zip':
             if await aiopath.exists('accounts'):
                 await aiormtree('accounts')
@@ -870,41 +951,45 @@ async def update_private_file(_, message, pre_message):
             await (await create_subprocess_exec("7z", "x", "-o.", "-aoa", "accounts.zip", "accounts/*.json")).wait()
             await (await create_subprocess_exec("chmod", "-R", "777", "accounts")).wait()
         elif file_name == 'list_drives.txt':
-            DRIVES_IDS.clear()
-            DRIVES_NAMES.clear()
-            INDEX_URLS.clear()
+            list_drives_dict.clear()
             if GDRIVE_ID := config_dict['GDRIVE_ID']:
-                DRIVES_NAMES.append("Main")
-                DRIVES_IDS.append(GDRIVE_ID)
-                INDEX_URLS.append(config_dict['INDEX_URL'])
+                list_drives_dict['Main'] = {"drive_id": GDRIVE_ID, "index_link": config_dict['INDEX_URL']}
             async with aiopen('list_drives.txt', 'r+') as f:
                 lines = await f.readlines()
                 for line in lines:
-                    temp = line.strip().split()
-                    DRIVES_IDS.append(temp[1])
-                    DRIVES_NAMES.append(temp[0].replace("_", " "))
-                    if len(temp) > 2:
-                        INDEX_URLS.append(temp[2])
-                    else:
-                        INDEX_URLS.append('')
+                    sep = 2 if line.strip().split()[-1].startswith('http') else 1
+                    temp = line.strip().rsplit(maxsplit=sep)
+                    name = "Main Custom" if temp[0].casefold() == "Main" else temp[0]
+                    list_drives_dict[name] = {'drive_id': temp[1], 'index_link': (temp[2] if sep == 2 else '')}
+        elif file_name == 'categories.txt':
+            categories_dict.clear()
+            if GDRIVE_ID := config_dict['GDRIVE_ID']:
+                categories_dict['Root'] = {"drive_id": GDRIVE_ID, "index_link": config_dict['INDEX_URL']}
+            async with aiopen('categories.txt', 'r+') as f:
+                lines = await f.readlines()
+                for line in lines:
+                    sep = 2 if line.strip().split()[-1].startswith('http') else 1
+                    temp = line.strip().rsplit(maxsplit=sep)
+                    name = "Root Custom" if temp[0].casefold() == "Root" else temp[0]
+                    categories_dict[name] = {'drive_id': temp[1], 'index_link': (temp[2] if sep == 2 else '')}
         elif file_name == 'buttons.txt':
             extra_buttons.clear()
             async with aiopen('buttons.txt', 'r+') as f:
                 lines = await f.readlines()
                 for line in lines:
-                    temp = line.strip().split()
-                    if len(extra_buttons.keys()) == 4:
+                    temp = line.strip().rsplit(maxsplit=1)
+                    if len(extra_buttons.keys()) >= 20:
                         break
-                    if len(temp) == 2:
-                        extra_buttons[temp[0].replace("_", " ")] = temp[1]
+                    elif temp[1].startswith('http'):
+                        extra_buttons[temp[0]] = temp[1]
         elif file_name == 'shorteners.txt':
-            shorteneres_list.clear()
+            shorteners_list.clear()
             async with aiopen('shorteners.txt', 'r+') as f:
                 lines = await f.readlines()
                 for line in lines:
                     temp = line.strip().split()
                     if len(temp) == 2:
-                        shorteneres_list.append({'domain': temp[0],'api_key': temp[1]})
+                        shorteners_list.append({'domain': temp[0],'api_key': temp[1]})
         elif file_name in ['.netrc', 'netrc']:
             if file_name == 'netrc':
                 await rename('netrc', '.netrc')
@@ -916,17 +1001,17 @@ async def update_private_file(_, message, pre_message):
             await load_config()
         if '@github.com' in config_dict['UPSTREAM_REPO']:
             buttons = ButtonMaker()
-            msg = 'Push to UPSTREAM_REPO ?'
+            msg = '<i>Do you want to Upload (Git Push) your file to <b>UPSTREAM_REPO</b> ?</i>'
             buttons.ibutton('Yes!', f"botset push {file_name}")
-            buttons.ibutton('No', "botset close")
+            buttons.ibutton('No!', "botset close")
             await sendMessage(message, msg, buttons.build_menu(2))
         else:
-            await message.delete()
+            await deleteMessage(message)
     if file_name == 'rclone.conf':
         await rclone_serve_booter()
     await update_buttons(pre_message)
     if DATABASE_URL:
-        await DbManger().update_private_file(file_name)
+        await DbManger().update_private_file(path)
     if await aiopath.exists('accounts.zip'):
         await remove('accounts.zip')
 
@@ -956,8 +1041,8 @@ async def edit_bot_settings(client, query):
     if data[1] == 'close':
         handler_dict[message.chat.id] = False
         await query.answer()
-        await message.delete()
-        await message.reply_to_message.delete()
+        await deleteMessage(message)
+        await deleteMessage(message.reply_to_message)
     elif data[1] == 'back':
         handler_dict[message.chat.id] = False
         await query.answer()
@@ -1003,13 +1088,15 @@ async def edit_bot_settings(client, query):
                 await (await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")).wait()
                 await create_subprocess_shell("gunicorn web.wserver:app --bind 0.0.0.0:80 --worker-class gevent")
         elif data[2] == 'GDRIVE_ID':
-            if DRIVES_NAMES and DRIVES_NAMES[0] == 'Main':
-                DRIVES_NAMES.pop(0)
-                DRIVES_IDS.pop(0)
-                INDEX_URLS.pop(0)
+            if 'Main' in list_drives_dict:
+                del list_drives_dict['Main']
+            if 'Root' in categories_dict:
+                del categories_dict['Root']
         elif data[2] == 'INDEX_URL':
-            if DRIVES_NAMES and DRIVES_NAMES[0] == 'Main':
-                INDEX_URLS[0] = ''
+            if (GDRIVE_ID := config_dict['GDRIVE_ID']) and 'Main' in list_drives_dict:
+                list_drives_dict['Main'] = {"drive_id": GDRIVE_ID, "index_link": ''}
+            if (GDRIVE_ID := config_dict['GDRIVE_ID']) and 'Root' in categories_dict:
+                categories_dict['Root'] = {"drive_id": GDRIVE_ID, "index_link": ''}
         elif data[2] == 'INCOMPLETE_TASK_NOTIFIER' and DATABASE_URL:
             await DbManger().trunc_table('tasks')
         config_dict[data[2]] = value
@@ -1161,8 +1248,8 @@ async def edit_bot_settings(client, query):
             await (await create_subprocess_shell(f"git rm -r --cached {filename} \
                                                    && git commit -sm botsettings -q \
                                                    && git push origin {config_dict['UPSTREAM_BRANCH']} -qf")).wait()
-        await message.delete()
-        await message.reply_to_message.delete()
+        await deleteMessage(message)
+        await deleteMessage(message.reply_to_message)
 
 
 async def bot_settings(_, message):

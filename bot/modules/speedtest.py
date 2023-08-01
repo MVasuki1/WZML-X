@@ -7,8 +7,9 @@ from bot import bot, LOGGER
 from bot.helper.telegram_helper.filters import CustomFilters
 from bot.helper.telegram_helper.bot_commands import BotCommands
 from bot.helper.telegram_helper.message_utils import sendMessage, deleteMessage, editMessage
-from bot.helper.ext_utils.bot_utils import get_readable_file_size
+from bot.helper.ext_utils.bot_utils import get_readable_file_size, new_task
 
+@new_task
 async def speedtest(_, message):
     speed = await sendMessage(message, "<i>Initializing Speedtest...</i>")
     test = Speedtest()
@@ -51,4 +52,4 @@ async def speedtest(_, message):
         pho = await editMessage(speed, string_speed)
 
 bot.add_handler(MessageHandler(speedtest, filters=command(
-    BotCommands.SpeedCommand) & CustomFilters.authorized))
+    BotCommands.SpeedCommand) & CustomFilters.authorized & ~CustomFilters.blacklisted))
