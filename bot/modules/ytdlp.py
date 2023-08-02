@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import subprocess
 from pyrogram.handlers import MessageHandler, CallbackQueryHandler
 from pyrogram.filters import command, regex, user
 from asyncio import sleep, wait_for, Event, wrap_future
@@ -9,6 +10,7 @@ from functools import partial
 from time import time
 
 from bot import DOWNLOAD_DIR, bot, categories_dict, config_dict, user_data, LOGGER
+from bot.modules.ytdlp_http_headers import YTDLP_HTTP_HEADERS
 from bot.helper.ext_utils.task_manager import task_utils
 from bot.helper.telegram_helper.message_utils import sendMessage, editMessage, deleteMessage, auto_delete_message, delete_links, open_category_btns, open_dump_btns
 from bot.helper.telegram_helper.button_build import ButtonMaker
@@ -239,6 +241,18 @@ async def _mdisk(link, name):
             return name, link
 
 
+def _njav(link, name):
+    print(link, name)
+    link = link.strip().split('\n')[0].strip()
+    print(link, name)
+    video_id = subprocess.check_output(f'''curl -s "{link}" | grep -oP 'Video\(.*\)"\s' | grep -oP "'.*'" | sed "s|'||g"''', shell=True).decode().strip()
+    print(video_id)
+    data_url= subprocess.check_output(f"""curl -s "https://njav.tv/en/api/v/{video_id}/videos" | jq -r '.data[0].url'""", shell=True).decode().strip()
+    print(data_url)
+    m3u_url= subprocess.check_output(f"""curl -s {data_url} | pup 'div[id="player"]' | grep -oP 'https.*m3u8d'""", shell=True).decode().strip()
+    return link.split('/')[-1], m3u_url.replace('\/', '/')
+
+
 @new_task
 async def _ytdl(client, message, isLeech=False, sameDir=None, bulk=[]):
     text = message.text.split('\n')
@@ -457,10 +471,14 @@ async def _ytdl(client, message, isLeech=False, sameDir=None, bulk=[]):
 
     listener = MirrorLeechListener(message, compress, isLeech=isLeech, tag=tag, sameDir=sameDir, rcFlags=rcf, upPath=up, drive_id=drive_id, index_link=index_link, isYtdlp=True, source_url=link)
 
+    options = {'usenetrc': True, 'cookiefile': 'cookies.txt'}
     if 'mdisk.me' in link:
         name, link = await _mdisk(link, name)
+    if 'njav.tv' in link:
+        name, link = _njav(link, name)
+    if 'akamai' in link:
+        options['http_headers'] = YTDLP_HTTP_HEADERS
 
-    options = {'usenetrc': True, 'cookiefile': 'cookies.txt'}
     if opt:
         yt_opt = opt.split('|')
         for ytopt in yt_opt:
