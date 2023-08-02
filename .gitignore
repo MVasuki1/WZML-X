@@ -19,3 +19,7 @@ bot.session
 user.session
 terabox.txt
 rclone.conf
+bot.session-journal
+qBittorrent/config/lockfile
+qBittorrent/config/qBittorrent-data.conf
+qBittorrent/config/rss/
