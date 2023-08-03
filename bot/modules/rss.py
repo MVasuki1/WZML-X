@@ -235,7 +235,7 @@ async def rssList(query, start, all_users=False):
                 list_feed += f"<b>Command:</b> <code>{data['command']}</code>\n"
                 list_feed += f"<b>Inf:</b> <code>{data['inf']}</code>\n"
                 list_feed += f"<b>Exf:</b> <code>{data['exf']}</code>\n"
-                list_feed += f"<b>Last Title:</b> <code>{data.get('last_title')}</code>"
+                list_feed += f"<b>Last Title:</b> <code>{data.get('last_title')}</code>\n"
                 list_feed += f"<b>Paused:</b> <code>{data['paused']}</code>\n"
     buttons.ibutton("Back", f"rss back {user_id}")
     buttons.ibutton("Close", f"rss close {user_id}")
