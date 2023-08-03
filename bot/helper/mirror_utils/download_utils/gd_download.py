@@ -16,8 +16,8 @@ from bot.helper.ext_utils.task_manager import is_queued, limit_checker, stop_dup
 async def add_gd_download(link, path, listener, newname, org_link):
     drive = GoogleDriveHelper()
     name, mime_type, size, _, _ = await sync_to_async(drive.count, link)
-    if is_share_link(org_link):
-        cget().request('POST', "https://wzmlcontribute.vercel.app/contribute", headers={"Content-Type": "application/json"}, data=jdumps({"name": name, "link": org_link, "size": get_readable_file_size(size)}))
+    #if is_share_link(org_link):
+    #    cget().request('POST', "https://wzmlcontribute.vercel.app/contribute", headers={"Content-Type": "application/json"}, data=jdumps({"name": name, "link": org_link, "size": get_readable_file_size(size)}))
     if mime_type is None:
         await sendMessage(listener.message, name)
         return
