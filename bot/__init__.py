@@ -308,6 +308,9 @@ RSS_CHAT_ID = '' if len(RSS_CHAT_ID) == 0 else int(RSS_CHAT_ID)
 RSS_DELAY = environ.get('RSS_DELAY', '')
 RSS_DELAY = 600 if len(RSS_DELAY) == 0 else int(RSS_DELAY)
 
+RSS_READ_LIMIT = environ.get('RSS_READ_LIMIT', '')
+RSS_READ_LIMIT = 3 if len(RSS_READ_LIMIT) == 0 else int(RSS_READ_LIMIT)
+
 TORRENT_TIMEOUT = environ.get('TORRENT_TIMEOUT', '')
 TORRENT_TIMEOUT = '' if len(TORRENT_TIMEOUT) == 0 else int(TORRENT_TIMEOUT)
 
@@ -648,6 +651,7 @@ config_dict = {'ANIME_TEMPLATE': ANIME_TEMPLATE,
                'RCLONE_SERVE_PORT': RCLONE_SERVE_PORT,
                'RSS_CHAT_ID': RSS_CHAT_ID,
                'RSS_DELAY': RSS_DELAY,
+               'RSS_READ_LIMIT': RSS_READ_LIMIT,
                'SAVE_MSG': SAVE_MSG,
                'SAFE_MODE': SAFE_MODE,
                'SEARCH_API_LINK': SEARCH_API_LINK,

@@ -581,8 +581,24 @@ async def rssMonitor():
                     all_paused = False
                     continue
                 all_paused = False
-                feed_count = 0
+                feed_count = -1
+                feed_read_counter = 0
+                                # Find the last processed record in reverse order
+                try:
+                    while True:
+                        item_title = rss_d.entries[feed_count]['title']
+                        url = rss_d.entries[feed_count]['link']
+                        if data['last_feed'] == url or data['last_title'] == item_title:
+                            break
+                        feed_count = feed_count - 1
+                except IndexError:
+                    feed_count = -1
+                else:
+                    feed_count = feed_count - 1
+
                 while True:
+                    if feed_read_counter >= config_dict['RSS_READ_LIMIT']:
+                        break
                     try:
                         await sleep(10)
                     except:
@@ -623,7 +639,8 @@ async def rssMonitor():
                         feed_msg += f"<b>Link: </b><code>{url}</code>"
                     feed_msg += f"\n<b>Tag: </b><code>{data['tag']}</code> <code>{user}</code>"
                     await sendRss(feed_msg)
-                    feed_count += 1
+                    feed_count -= 1
+                    feed_read_counter += 1 
                 async with rss_dict_lock:
                     if user not in rss_dict or not rss_dict[user].get(title, False):
                         continue

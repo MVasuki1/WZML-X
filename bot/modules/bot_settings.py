@@ -35,7 +35,8 @@ default_values = {'AUTO_DELETE_MESSAGE_DURATION': 30,
                   'DEFAULT_UPLOAD': 'gd',
                   'DOWNLOAD_DIR': '/usr/src/app/downloads/',
                   'LEECH_SPLIT_SIZE': MAX_SPLIT_SIZE,
-                  'RSS_DELAY': 600,
+                  'RSS_DELAY': 900,
+                  'RSS_READ_LIMIT': 3,
                   'STATUS_UPDATE_INTERVAL': 10,
                   'SEARCH_LIMIT': 0,
                   'UPSTREAM_BRANCH': 'master',
@@ -232,6 +233,9 @@ async def load_config():
 
     RSS_DELAY = environ.get('RSS_DELAY', '')
     RSS_DELAY = 900 if len(RSS_DELAY) == 0 else int(RSS_DELAY)
+
+    RSS_READ_LIMIT = environ.get('RSS_READ_LIMIT', '')
+    RSS_READ_LIMIT = 3 if len(RSS_READ_LIMIT) == 0 else int(RSS_READ_LIMIT)
 
     CMD_SUFFIX = environ.get('CMD_SUFFIX', '')
 
