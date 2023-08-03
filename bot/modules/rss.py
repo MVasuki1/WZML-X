@@ -651,10 +651,10 @@ async def rssMonitor():
                     if user not in rss_dict or not rss_dict[user].get(title, False):
                         continue
                     rss_dict[user][title].update(
-                        {'last_feed': last_link, 'last_title': last_title})
+                        {'last_feed': url, 'last_title': item_title})
                 await DbManger().rss_update(user)
-                LOGGER.info(f"Feed Name: {title}")
-                LOGGER.info(f"Last item: {last_link}")
+                LOGGER.info(f"Feed Name: {item_title}")
+                LOGGER.info(f"Last item: {url}")
             except RssShutdownException as ex:
                 LOGGER.info(ex)
                 break
