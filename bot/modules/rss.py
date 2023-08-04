@@ -625,12 +625,12 @@ async def rssMonitor():
                     for flist in data['inf']:
                         if all(x not in item_title.lower() for x in flist):
                             parse = False
-                            feed_count += 1
+                            feed_count -= 1
                             break
                     for flist in data['exf']:
                         if any(x in item_title.lower() for x in flist):
                             parse = False
-                            feed_count += 1
+                            feed_count -= 1
                             break
                     if not parse:
                         continue
