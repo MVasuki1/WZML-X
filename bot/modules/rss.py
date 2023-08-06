@@ -567,13 +567,14 @@ async def rssMonitor():
     if len(rss_dict) == 0:
         scheduler.pause()
         return
-    all_tasks_count = len(non_queued_dl) + len(queued_dl) + len(non_queued_up) + len(queued_up)
-    if all_tasks_count > 24:
-        return
 
     all_paused = True
 
     for user, items in list(rss_dict.items()):
+        all_tasks_count = len(non_queued_dl) + len(queued_dl) + len(non_queued_up) + len(queued_up)
+        if all_tasks_count >= 24:
+            all_paused = False
+            continue
         for title, data in list(items.items()):
             await sleep(0)
             try:
