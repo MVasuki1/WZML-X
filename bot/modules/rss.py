@@ -11,7 +11,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from re import split as re_split
 from io import BytesIO
 
-from bot import scheduler, rss_dict, LOGGER, DATABASE_URL, config_dict, bot
+from bot import scheduler, rss_dict, LOGGER, DATABASE_URL, config_dict, bot, non_queued_dl, queued_dl, non_queued_up, queued_up
 from bot.helper.telegram_helper.message_utils import sendMessage, editMessage, sendRss, sendFile
 from bot.helper.telegram_helper.filters import CustomFilters
 from bot.helper.telegram_helper.bot_commands import BotCommands
@@ -567,7 +567,12 @@ async def rssMonitor():
     if len(rss_dict) == 0:
         scheduler.pause()
         return
+    all_tasks_count = len(non_queued_dl) + len(queued_dl) + len(non_queued_up) + len(queued_up)
+    if all_tasks_count > 24:
+        return
+
     all_paused = True
+
     for user, items in list(rss_dict.items()):
         for title, data in list(items.items()):
             await sleep(0)
