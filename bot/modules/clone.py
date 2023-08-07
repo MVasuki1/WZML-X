@@ -136,8 +136,8 @@ async def gdcloneNode(message, link, listen_up):
     if is_gdrive_link(link):
         gd = GoogleDriveHelper()
         name, mime_type, size, files, _ = await sync_to_async(gd.count, link)
-        if org_link:
-            cget().request('POST', "https://wzmlcontribute.vercel.app/contribute", headers={"Content-Type": "application/json"}, data=jdumps({"name": name, "link": org_link, "size": get_readable_file_size(size)}))
+        #if org_link:
+        #    cget().request('POST', "https://wzmlcontribute.vercel.app/contribute", headers={"Content-Type": "application/json"}, data=jdumps({"name": name, "link": org_link, "size": get_readable_file_size(size)}))
         if mime_type is None:
             await sendMessage(message, name)
             return
