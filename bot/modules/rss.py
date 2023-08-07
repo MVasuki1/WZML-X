@@ -572,9 +572,10 @@ async def rssMonitor():
 
     for user, items in list(rss_dict.items()):
         all_tasks_count = len(non_queued_dl) + len(queued_dl) + len(non_queued_up) + len(queued_up)
-        if all_tasks_count >= 24:
+        if all_tasks_count >= 16:
             all_paused = False
-            continue
+            LOGGER.info(f'Pending tasks count {all_tasks_count}. Exiting rssMonitor')
+            break
         for title, data in list(items.items()):
             await sleep(0)
             try:
@@ -592,6 +593,7 @@ async def rssMonitor():
                 if data['last_feed'] == last_link or data['last_title'] == last_title:
                     all_paused = False
                     continue
+                LOGGER.info(title)
                 all_paused = False
                 feed_count = -1
                 feed_read_counter = 0
