@@ -609,11 +609,13 @@ async def rssMonitor():
                     feed_count = -1
                 else:
                     feed_count = feed_count - 1
+                sleep_delay_flag = True
                 while True:
                     if feed_read_counter >= config_dict['RSS_READ_LIMIT']:
                         break
                     try:
-                        await sleep(10)
+                        if sleep_delay_flag:
+                            await sleep(10)
                     except:
                         raise RssShutdownException('Rss Monitor Stopped!')
                     try:
@@ -640,6 +642,7 @@ async def rssMonitor():
                             feed_count -= 1
                             break
                     if not parse:
+                        sleep_delay_flag = False
                         continue
                     if command := data['command']:
                         cmd = command.split(maxsplit=1)
@@ -652,6 +655,7 @@ async def rssMonitor():
                         feed_msg += f"<b>Link: </b><code>{url}</code>"
                     feed_msg += f"\n<b>Tag: </b><code>{data['tag']}</code> <code>{user}</code>"
                     await sendRss(feed_msg)
+                    sleep_delay_flag = True
                     feed_count -= 1
                     feed_read_counter += 1 
                 async with rss_dict_lock:
