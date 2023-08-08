@@ -577,6 +577,7 @@ async def rssMonitor():
             LOGGER.info(f'Pending tasks count {all_tasks_count}. Exiting rssMonitor')
             break
         for title, data in list(items.items()):
+            LOGGER.info(title)
             await sleep(0)
             try:
                 if data['paused']:
@@ -593,11 +594,10 @@ async def rssMonitor():
                 if data['last_feed'] == last_link or data['last_title'] == last_title:
                     all_paused = False
                     continue
-                LOGGER.info(title)
                 all_paused = False
                 feed_count = -1
                 feed_read_counter = 0
-                                # Find the last processed record in reverse order
+                # Find the last processed record in reverse order
                 try:
                     while True:
                         item_title = rss_d.entries[feed_count]['title']
@@ -609,7 +609,6 @@ async def rssMonitor():
                     feed_count = -1
                 else:
                     feed_count = feed_count - 1
-
                 while True:
                     if feed_read_counter >= config_dict['RSS_READ_LIMIT']:
                         break
