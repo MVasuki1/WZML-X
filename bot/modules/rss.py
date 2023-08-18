@@ -586,6 +586,8 @@ async def rssMonitor():
                     async with session.get(data['link']) as res:
                         html = await res.text()
                 rss_d = feedparse(html)
+                if len(rss_d.entries) == 0:
+                    continue
                 try:
                     last_link = rss_d.entries[0]['links'][1]['href']
                 except IndexError:
