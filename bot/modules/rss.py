@@ -571,15 +571,14 @@ async def rssMonitor():
     all_paused = True
     
     for user, items in list(rss_dict.items()):
-        all_tasks_count = len(non_queued_dl) + len(queued_dl) + len(non_queued_up) + len(queued_up)
-        if all_tasks_count >= 16:
-            all_paused = False
-            LOGGER.info(f'Pending tasks count {all_tasks_count}. Exiting rssMonitor')
-            break
-
         ulist = list(items.items())
         random.shuffle(ulist)
         for title, data in ulist:
+            all_tasks_count = len(non_queued_dl) + len(queued_dl) + len(non_queued_up) + len(queued_up)
+            if all_tasks_count >= 16:
+                all_paused = False
+                LOGGER.info(f'Pending tasks count {all_tasks_count}. Exiting rssMonitor')
+                break
             LOGGER.info(title)
             await sleep(0)
             try:
