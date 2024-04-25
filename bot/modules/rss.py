@@ -132,10 +132,10 @@ async def rssSub(client, message, pre_event):
             last_link = ""
             async with rss_dict_lock:
                 if rss_dict.get(user_id, False):
-                    rss_dict[user_id][title] = {'link': feed_link, 'last_feed': last_link, 'last_title': last_title,
+                    rss_dict[user_id][title] = {'link': feed_link, 'last_feed': last_link, 'last_title': last_title, 'depth': -1,
                                                 'inf': inf_lists, 'exf': exf_lists, 'paused': False, 'command': cmd, 'tag': tag}
                 else:
-                    rss_dict[user_id] = {title: {'link': feed_link, 'last_feed': last_link, 'last_title': last_title,
+                    rss_dict[user_id] = {title: {'link': feed_link, 'last_feed': last_link, 'last_title': last_title, 'depth': -1,
                                                 'inf': inf_lists, 'exf': exf_lists, 'paused': False, 'command': cmd, 'tag': tag}}
             LOGGER.info(
                 f"Rss Feed Added: id: {user_id} - title: {title} - link: {feed_link} - c: {cmd} - inf: {inf} - exf: {exf}")
@@ -218,6 +218,7 @@ async def rssList(query, start, all_users=False):
                     list_feed += f"\n\n<b>Title:</b> <code>{title}</code>\n"
                     list_feed += f"<b>Feed Url:</b> <code>{data['link']}</code>\n"
                     list_feed += f"<b>Command:</b> <code>{data['command']}</code>\n"
+                    list_feed += f"<b>Depth:</b> <code>{data.get('depth', -1)}</code>\n"
                     list_feed += f"<b>Inf:</b> <code>{data['inf']}</code>\n"
                     list_feed += f"<b>Exf:</b> <code>{data['exf']}</code>\n"
                     list_feed += f"<b>Paused:</b> <code>{data['paused']}</code>\n"
@@ -233,6 +234,7 @@ async def rssList(query, start, all_users=False):
             for title, data in list(rss_dict[user_id].items())[start:5+start]:
                 list_feed += f"\n\n<b>Title:</b> <code>{title}</code>\n<b>Feed Url: </b><code>{data['link']}</code>\n"
                 list_feed += f"<b>Command:</b> <code>{data['command']}</code>\n"
+                list_feed += f"<b>Depth:</b> <code>{data.get('depth', -1)}</code>\n"
                 list_feed += f"<b>Inf:</b> <code>{data['inf']}</code>\n"
                 list_feed += f"<b>Exf:</b> <code>{data['exf']}</code>\n"
                 list_feed += f"<b>Last Title:</b> <code>{data.get('last_title')}</code>\n"
@@ -666,7 +668,7 @@ async def rssMonitor():
                     if user not in rss_dict or not rss_dict[user].get(title, False):
                         continue
                     rss_dict[user][title].update(
-                        {'last_feed': url, 'last_title': item_title})
+                            {'last_feed': url, 'last_title': item_title, 'depth': len(rss_d.entries) + feed_count})
                 await DbManger().rss_update(user)
                 LOGGER.info(f"Feed Name: {item_title}")
                 LOGGER.info(f"Last item: {url}")
