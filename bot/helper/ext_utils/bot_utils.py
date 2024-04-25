@@ -184,6 +184,7 @@ class EngineStatus:
         self.STATUS_AIOHTTP = f"AioHttp {version_cache['aiohttp']}"
         self.STATUS_GD = f"Google-API v{version_cache['gapi']}"
         #self.STATUS_MEGA = f"MegaSDK v{version_cache['mega']}"
+        self.STATUS_LOCAL = f"Local-Directory 0.0"
         self.STATUS_QB = f"qBit {version_cache['qbit']}"
         self.STATUS_TG = f"Pyrogram v{version_cache['pyro']}"
         self.STATUS_YT = f"yt-dlp v{version_cache['ytdlp']}"
@@ -662,6 +663,7 @@ async def set_commands(client):
             BotCommand(BotCommands.LeechCommand[0], f'or /{BotCommands.LeechCommand[1]} Leech [links/media/rclone_path]'),
             BotCommand(BotCommands.QbMirrorCommand[0], f'or /{BotCommands.QbMirrorCommand[1]} Mirror magnet/torrent using qBittorrent'),
             BotCommand(BotCommands.QbLeechCommand[0], f'or /{BotCommands.QbLeechCommand[1]} Leech magnet/torrent using qBittorrent'),
+            BotCommand(BotCommands.LocalLeechCommand[0], f'or /{BotCommands.LocalLeechCommand[1]} Leech Local files'),
             BotCommand(BotCommands.YtdlCommand[0], f'or /{BotCommands.YtdlCommand[1]} Mirror yt-dlp supported links via bot'),
             BotCommand(BotCommands.YtdlLeechCommand[0], f'or /{BotCommands.YtdlLeechCommand[1]} Leech yt-dlp supported links via bot'),
             BotCommand(BotCommands.CloneCommand[0], f'or /{BotCommands.CloneCommand[1]} Copy file/folder to Drive (GDrive/RClone)'),

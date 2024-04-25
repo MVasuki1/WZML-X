@@ -40,7 +40,7 @@ from bot.helper.themes import BotTheme
 
 
 class MirrorLeechListener:
-    def __init__(self, message, compress=False, extract=False, isQbit=False, isLeech=False, tag=None, select=False, seed=False, sameDir=None, rcFlags=None, upPath=None, isClone=False, join=False, drive_id=None, index_link=None, isYtdlp=False, source_url=None, ):
+    def __init__(self, message, compress=False, extract=False, isQbit=False, isLeech=False, tag=None, select=False, seed=False, sameDir=None, rcFlags=None, upPath=None, isClone=False, join=False, drive_id=None, index_link=None, isYtdlp=False, source_url=None, isLocalLeech=False):
         if sameDir is None:
             sameDir = {}
         self.message = message
@@ -50,6 +50,7 @@ class MirrorLeechListener:
         self.compress = compress
         self.isQbit = isQbit
         self.isLeech = isLeech
+        self.isLocalLeech = isLocalLeech
         self.isClone = isClone
         self.isMega = is_mega_link(source_url) if source_url else False
         self.isGdrive = is_gdrive_link(source_url) if source_url else False

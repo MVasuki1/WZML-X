@@ -9,6 +9,7 @@ class _BotCommands:
         self.YtdlCommand = [f'ytdl{CMD_SUFFIX}', f'y{CMD_SUFFIX}']
         self.LeechCommand = [f'leech{CMD_SUFFIX}', f'l{CMD_SUFFIX}']
         self.QbLeechCommand = [f'qbleech{CMD_SUFFIX}', f'ql{CMD_SUFFIX}']
+        self.LocalLeechCommand = [f'lleech{CMD_SUFFIX}', f'll{CMD_SUFFIX}']
         self.YtdlLeechCommand = [f'ytdlleech{CMD_SUFFIX}', f'yl{CMD_SUFFIX}']
         if config_dict['SHOW_EXTRA_CMDS']:
             self.MirrorCommand.extend([f'unzipmirror{CMD_SUFFIX}', f'uzm{CMD_SUFFIX}', f'zipmirror{CMD_SUFFIX}', f'zm{CMD_SUFFIX}'])

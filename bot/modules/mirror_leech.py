@@ -15,6 +15,7 @@ from bot.helper.ext_utils.task_manager import task_utils
 from bot.helper.mirror_utils.download_utils.aria2_download import add_aria2c_download
 from bot.helper.mirror_utils.download_utils.gd_download import add_gd_download
 from bot.helper.mirror_utils.download_utils.qbit_download import add_qb_torrent
+from bot.helper.mirror_utils.download_utils.local_download import add_local_dir
 #from bot.helper.mirror_utils.download_utils.mega_download import add_mega_download
 from bot.helper.mirror_utils.download_utils.rclone_download import add_rclone_download
 from bot.helper.mirror_utils.rclone_utils.list import RcloneList
@@ -31,7 +32,7 @@ from bot.helper.ext_utils.bulk_links import extract_bulk_links
 
 
 @new_task
-async def _mirror_leech(client, message, isQbit=False, isLeech=False, sameDir=None, bulk=[]):
+async def _mirror_leech(client, message, isQbit=False, isLeech=False, isLocalLeech=False, sameDir=None, bulk=[]):
     text = message.text.split('\n')
     input_list = text[0].split(' ')
 
@@ -228,7 +229,7 @@ async def _mirror_leech(client, message, isQbit=False, isLeech=False, sameDir=No
         LOGGER.info(link)
         org_link = link
 
-    if not is_mega_link(link) and not isQbit and not is_magnet(link) and not is_rclone_path(link) \
+    if not is_mega_link(link) and not isQbit and not isLocalLeech and not is_magnet(link) and not is_rclone_path(link) \
        and not is_gdrive_link(link) and not link.endswith('.torrent') and file_ is None:
         content_type = await get_content_type(link)
         if content_type is None or re_match(r'text/html|text/plain', content_type):
@@ -318,7 +319,7 @@ async def _mirror_leech(client, message, isQbit=False, isLeech=False, sameDir=No
             return
 
     listener = MirrorLeechListener(message, compress, extract, isQbit, isLeech, tag, select, seed, 
-                                    sameDir, rcf, up, join, drive_id=drive_id, index_link=index_link, source_url=org_link if org_link else link)
+            sameDir, rcf, up, join, drive_id=drive_id, index_link=index_link, source_url=org_link if org_link else link, isLocalLeech=isLocalLeech)
 
     if file_ is not None:
         await delete_links(message)
@@ -342,6 +343,8 @@ async def _mirror_leech(client, message, isQbit=False, isLeech=False, sameDir=No
     #    await add_mega_download(link, f'{path}/', listener, name)
     elif isQbit:
         await add_qb_torrent(link, path, listener, ratio, seed_time)
+    elif isLocalLeech:
+        await add_local_dir(link, path, listener)
     else:
         ussr = args['-u'] or args['-user']
         pssw = args['-p'] or args['-pass']
@@ -464,6 +467,10 @@ async def qb_leech(client, message):
     _mirror_leech(client, message, isQbit=True, isLeech=True)
 
 
+async def local_leech(client, message):
+    _mirror_leech(client, message, isLocalLeech=True, isLeech=True)
+
+
 bot.add_handler(MessageHandler(mirror, filters=command(
     BotCommands.MirrorCommand) & CustomFilters.authorized & ~CustomFilters.blacklisted))
 bot.add_handler(MessageHandler(qb_mirror, filters=command(
@@ -472,4 +479,6 @@ bot.add_handler(MessageHandler(leech, filters=command(
     BotCommands.LeechCommand) & CustomFilters.authorized & ~CustomFilters.blacklisted))
 bot.add_handler(MessageHandler(qb_leech, filters=command(
     BotCommands.QbLeechCommand) & CustomFilters.authorized & ~CustomFilters.blacklisted))
+bot.add_handler(MessageHandler(local_leech, filters=command(
+    BotCommands.LocalLeechCommand) & CustomFilters.authorized & ~CustomFilters.blacklisted))
 bot.add_handler(CallbackQueryHandler(wzmlxcb, filters=regex(r'^wzmlx')))
