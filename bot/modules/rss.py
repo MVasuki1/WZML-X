@@ -10,7 +10,7 @@ from aiohttp import ClientSession
 from apscheduler.triggers.interval import IntervalTrigger
 from re import split as re_split
 from io import BytesIO
-
+import random
 from bot import scheduler, rss_dict, LOGGER, DATABASE_URL, config_dict, bot, non_queued_dl, queued_dl, non_queued_up, queued_up
 from bot.helper.telegram_helper.message_utils import sendMessage, editMessage, sendRss, sendFile
 from bot.helper.telegram_helper.filters import CustomFilters
@@ -569,14 +569,17 @@ async def rssMonitor():
         return
 
     all_paused = True
-
+    
     for user, items in list(rss_dict.items()):
         all_tasks_count = len(non_queued_dl) + len(queued_dl) + len(non_queued_up) + len(queued_up)
         if all_tasks_count >= 16:
             all_paused = False
             LOGGER.info(f'Pending tasks count {all_tasks_count}. Exiting rssMonitor')
             break
-        for title, data in list(items.items()):
+
+        ulist = list(items.items())
+        random.shuffle(ulist)
+        for title, data in ulist:
             LOGGER.info(title)
             await sleep(0)
             try:
