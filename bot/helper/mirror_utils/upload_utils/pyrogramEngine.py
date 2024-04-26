@@ -243,6 +243,8 @@ class TgUploader:
             if dirpath.endswith('/yt-dlp-thumb'):
                 continue
             for file_ in natsorted(files):
+                # To avoid being flagged for spam
+                await sleep(6)
                 self.__up_path = ospath.join(dirpath, file_)
                 if file_.lower().endswith(tuple(GLOBAL_EXTENSION_FILTER)):
                     await aioremove(self.__up_path)
